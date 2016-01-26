@@ -1,0 +1,37 @@
+﻿#pragma kernel DepthCalculator
+//#pragma kernel FillMatrices
+
+
+RWStructuredBuffer<float3> dataBuffer;
+float MaxDepth;
+float Radius;
+float Strength;
+float ZRadiusMul;
+float ZStrengthMul;
+float4 PosOne,PosTwo,PosThree,PosFour; //Array's are buggyin Unity, positions are not correctly passed
+
+[numthreads(16,1,1)]
+void DepthCalculator (uint3 id : SV_DispatchThreadID)
+{
+	float distance[4];
+	distance[0] = length(dataBuffer[id.x].xy - PosOne.xy);
+	distance[1] = length(dataBuffer[id.x].xy - PosTwo.xy);
+	distance[2] = length(dataBuffer[id.x].xy - PosThree.xy);
+	distance[3] = length(dataBuffer[id.x].xy - PosFour.xy);
+
+	float shortDistance = 100000000;
+	for(int i = 0 ; i < 4 ; i++)
+	{
+		if(distance[i] < shortDistance) 
+			shortDistance = distance[i];
+	}
+	float value = step(0,dataBuffer[id.x].z) *dataBuffer[id.x].z;
+	float currentRadius = Radius + (value * ZRadiusMul);
+	float currentStrength = Strength + (value * ZStrengthMul);
+
+	if (shortDistance < currentRadius && dataBuffer[id.x].z > MaxDepth) //z ranges from 0 - 41,5
+	{
+		float amount = (1 - (shortDistance / currentRadius)) * currentStrength;
+		dataBuffer[id.x].z -=amount;
+	}
+}
